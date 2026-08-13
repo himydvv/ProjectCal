@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import { FiCheckCircle, FiCircle, FiPlus, FiTrash2 } from "react-icons/fi";
 import { supabase, Goal } from "@/lib/supabase";
+import { useAuth } from "@/components/AuthProvider";
 import clsx from "clsx";
 
 export default function Goals() {
+  const { isGuest } = useAuth();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [newGoalTitle, setNewGoalTitle] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -16,6 +18,11 @@ export default function Goals() {
 
   const fetchGoals = async () => {
     setIsLoading(true);
+    if (isGuest) {
+      setGoals([]);
+      setIsLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from('goals')
       .select('*')
@@ -37,6 +44,17 @@ export default function Goals() {
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGoalTitle.trim()) return;
+
+    if (isGuest) {
+      const newGoal: Goal = {
+        id: Math.random().toString(),
+        title: newGoalTitle,
+        status: "active",
+      };
+      setGoals([newGoal, ...goals]);
+      setNewGoalTitle("");
+      return;
+    }
 
     const { data, error } = await supabase
       .from('goals')
@@ -62,6 +80,11 @@ export default function Goals() {
     const newStatus = isCompleted ? "active" : "completed";
     const completedAt = isCompleted ? null : new Date().toISOString();
 
+    if (isGuest) {
+      setGoals(goals.map(g => g.id === id ? { ...g, status: newStatus, completed_at: completedAt || undefined } : g));
+      return;
+    }
+
     const { error } = await supabase
       .from('goals')
       .update({
@@ -78,6 +101,11 @@ export default function Goals() {
   };
 
   const deleteGoal = async (id: string) => {
+    if (isGuest) {
+      setGoals(goals.filter(g => g.id !== id));
+      return;
+    }
+
     const { error } = await supabase
       .from('goals')
       .delete()

@@ -3,16 +3,26 @@
 import { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/components/AuthProvider";
 
 const COLORS = ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b"]; 
 
 export default function TaskDistributionChart() {
+  const { isGuest } = useAuth();
   const [data, setData] = useState<{name: string, value: number}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       setIsLoading(true);
+      if (isGuest) {
+        setData([
+          { name: "Routines (All Days)", value: 15 },
+          { name: "Deep Work (Specific)", value: 25 }
+        ]);
+        setIsLoading(false);
+        return;
+      }
       const { data: rpcData, error } = await supabase.rpc('get_task_distribution');
       if (!error && rpcData) {
          const formatted = rpcData.map((d: any) => ({

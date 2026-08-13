@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/components/AuthProvider";
 import clsx from "clsx";
 
 export default function PerformanceChart() {
+  const { isGuest } = useAuth();
   const [metric, setMetric] = useState<"total_hours" | "completion_ratio">("total_hours");
   const [data, setData] = useState<{date: string, total_hours: number, completion_ratio: number}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -13,6 +15,19 @@ export default function PerformanceChart() {
   useEffect(() => {
     async function fetchData() {
       setIsLoading(true);
+      if (isGuest) {
+        setData([
+          { date: "Mon", total_hours: 4, completion_ratio: 0.5 },
+          { date: "Tue", total_hours: 6, completion_ratio: 0.7 },
+          { date: "Wed", total_hours: 5, completion_ratio: 0.6 },
+          { date: "Thu", total_hours: 8, completion_ratio: 0.9 },
+          { date: "Fri", total_hours: 7, completion_ratio: 0.8 },
+          { date: "Sat", total_hours: 2, completion_ratio: 1.0 },
+          { date: "Sun", total_hours: 3, completion_ratio: 0.5 }
+        ]);
+        setIsLoading(false);
+        return;
+      }
       const { data: rpcData, error } = await supabase.rpc('get_performance_trend', { days_back: 7 });
       if (!error && rpcData) {
          const formatted = rpcData.map((d: any) => {

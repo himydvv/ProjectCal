@@ -8,8 +8,10 @@ import TaskLogModal from "@/components/modals/TaskLogModal";
 import { FiPlus } from "react-icons/fi";
 
 import { format } from "date-fns";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function Timetable() {
+  const { isGuest } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | undefined>(undefined);
@@ -21,6 +23,11 @@ export default function Timetable() {
 
   const fetchTasks = async () => {
     setIsLoading(true);
+    if (isGuest) {
+      setTasks([]);
+      setIsLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from('tasks')
       .select('*')
@@ -36,6 +43,10 @@ export default function Timetable() {
 
   const handleSaveTask = async (task: Partial<Task>) => {
     if (taskToEdit) {
+      if (isGuest) {
+        setTasks(tasks.map(t => t.id === task.id ? { ...t, ...task } as Task : t));
+        return;
+      }
       // Update
       const { error } = await supabase
         .from('tasks')
@@ -57,6 +68,15 @@ export default function Timetable() {
         console.error("Error updating task:", error);
       }
     } else {
+      if (isGuest) {
+        const newTask: Task = {
+          ...task,
+          id: Math.random().toString(),
+          created_at: new Date().toISOString()
+        } as Task;
+        setTasks([...tasks, newTask]);
+        return;
+      }
       // Insert
       const { data, error } = await supabase
         .from('tasks')
@@ -81,6 +101,10 @@ export default function Timetable() {
   };
 
   const handleDeleteTask = async (id: string) => {
+    if (isGuest) {
+      setTasks(tasks.filter(t => t.id !== id));
+      return;
+    }
     const { error } = await supabase
       .from('tasks')
       .delete()
